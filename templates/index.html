@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Aulas</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            transition: background-color 0.5s ease;
+        }
+
+        body.modo-proximas {
+            background-color: #000;
+        }
+
+        h1 {
+            text-align: center;
+            color: black;
+            transition: color 0.5s ease;
+            margin-bottom: 10px;
+        }
+
+        body.modo-proximas h1 {
+            color: white;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        body.modo-proximas h2 {
+            color: white;
+        }
+
+        .info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        body.modo-proximas .info {
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .ocupada {
+            background-color: #e74c3c;
+        }
+
+        .libre {
+            background-color: #2ecc71;
+        }
+
+        .aula {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .materia {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body id="body-principal">
+
+    <h1>Dashboard Aulas - Módulo {{ modulo }}</h1>
+
+    <div class="info">
+        Día: {{ dia_actual }} | Hora actual: {{ hora_actual }}:00
+    </div>
+
+    <!-- ===================== -->
+    <!-- VISTA ACTUAL -->
+    <!-- ===================== -->
+    <div id="vista-actual">
+        <h2>Clases en Curso</h2>
+        <div class="grid">
+            {% for tarjeta in tarjetas %}
+                <div class="card {{ tarjeta.estado }}">
+                    <div class="aula">{{ tarjeta.aula }}</div>
+
+                    {% if tarjeta.estado == "ocupada" %}
+                        <div class="materia">{{ tarjeta.materia }}</div>
+                        <div>{{ tarjeta.carrera }}</div>
+                        <div>{{ tarjeta.inicio }}:00 - {{ tarjeta.fin }}:00</div>
+                    {% else %}
+                        <div class="materia">Disponible</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ===================== -->
+    <!-- VISTA PROXIMAS -->
+    <!-- ===================== -->
+    <div id="vista-proximas" style="display:none;">
+        <h2>Próximas Clases</h2>
+
+        <div class="grid">
+            {% for tarjeta in tarjetas_proximas %}
+                <div class="card {{ tarjeta.estado }}">
+                    <div class="aula">{{ tarjeta.aula }}</div>
+
+                    {% if tarjeta.estado == "ocupada" %}
+                        <div class="materia">{{ tarjeta.materia }}</div>
+                        <div>{{ tarjeta.carrera }}</div>
+                        <div>{{ tarjeta.inicio }}:00 - {{ tarjeta.fin }}:00</div>
+                    {% else %}
+                        <div class="materia">Disponible</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+<script>
+    const vistaActual = document.getElementById("vista-actual");
+    const vistaProximas = document.getElementById("vista-proximas");
+    const body = document.getElementById("body-principal");
+
+    function mostrarProximas() {
+        vistaActual.style.display = "none";
+        vistaProximas.style.display = "block";
+        body.classList.add("modo-proximas");
+    }
+
+    function mostrarActual() {
+        vistaProximas.style.display = "none";
+        vistaActual.style.display = "block";
+        body.classList.remove("modo-proximas");
+    }
+
+    // 5 minutos vista actual
+    // 1 minuto vista próximas
+    setInterval(() => {
+        mostrarProximas();
+
+        setTimeout(() => {
+            mostrarActual();
+        }, 60000);
+
+    }, 300000);
+
+    // Refrescar cada 6 minutos
+    setTimeout(function(){
+        location.reload();
+    }, 360000);
+</script>
+
+</body>
+</html>

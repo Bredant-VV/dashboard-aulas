@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard CU Valles</title>
+    <meta http-equiv="refresh" content="1800">
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+        }
+
+        .card {
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .libre {
+            background-color: #2ecc71;
+        }
+
+        .ocupada {
+            background-color: #e74c3c;
+        }
+
+        .aula {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .materia {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+    </style>
+</head>
+
+<script>
+
+    const vistaActual = document.getElementById("vista-actual");
+    const vistaProximas = document.getElementById("vista-proximas");
+    const body = document.getElementById("body-principal");
+    const titulo = document.getElementById("titulo-principal");
+
+    function mostrarProximas() {
+        vistaActual.style.display = "none";
+        vistaProximas.style.display = "block";
+
+        // Fondo negro y título blanco
+        body.style.backgroundColor = "black";
+        titulo.style.color = "white";
+    }
+
+    function mostrarActual() {
+        vistaProximas.style.display = "none";
+        vistaActual.style.display = "block";
+
+        // Regresar a diseño original
+        body.style.backgroundColor = "";
+        titulo.style.color = "";
+    }
+
+    // Cada 5 minutos cambia a próximas por 1 minuto
+    setInterval(() => {
+
+        mostrarProximas();
+
+        setTimeout(() => {
+            mostrarActual();
+        }, 60000); // 1 minuto mostrando próximas
+
+    }, 300000); // 5 minutos en vista normal
+
+</script>
+
+<body id="body-principal">
+
+<div id="vista-actual"> ... </div>
+<div id="vista-proximas" style="display:none;"> ... </div>
+
+<h1 id="titulo-principal">Dashboard Aulas - Módulo {{ modulo }}</h1>
+
+<div class="info">
+    Día: {{ dia_actual }} | Hora actual: {{ hora_actual }}:00
+</div>
+
+<div class="grid">
+    {% for tarjeta in tarjetas %}
+        <div class="card {{ tarjeta.estado }}">
+            <div class="aula">{{ tarjeta.aula }}</div>
+
+            {% if tarjeta.estado == "ocupada" %}
+                <div class="materia">{{ tarjeta.materia }}</div>
+                <div>{{ tarjeta.carrera }}</div>
+                <div>{{ tarjeta.inicio }}:00 - {{ tarjeta.fin }}:00</div>
+            {% else %}
+                <div class="materia">Disponible</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>
