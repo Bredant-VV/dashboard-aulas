@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 import pandas as pd
 from datetime import datetime
+import pytz
 
 app = Flask(__name__)
 
@@ -31,7 +32,8 @@ def cargar_datos(modulo):
 
     df = df[df["Aula"].str.startswith(modulo)]
 
-    hora_actual = datetime.now().hour
+    zona = pytz.timezone("America/Mexico_City")
+    hora_actual = datetime.now(zona)
 
     ocupadas = df[
         (df["Hora inicio"] <= hora_actual) &
@@ -113,6 +115,9 @@ def index(modulo="A"):
         dia_actual=dia_actual,
         modulo=modulo
     )
+@app.route("/movil")
+def vista_movil():
+    return render_template("movil.html")
 
 
 if __name__ == "__main__":
