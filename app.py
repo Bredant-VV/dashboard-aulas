@@ -1,7 +1,7 @@
 from flask import Flask, render_template
 import pandas as pd
 from datetime import datetime
-import pytz
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
@@ -27,13 +27,13 @@ def cargar_datos(modulo):
         6: "DOMINGO"
     }
 
-    dia_actual = dias[datetime.now().weekday()]
+    # 🔥 Zona horaria correcta sin pytz
+    ahora = datetime.now(ZoneInfo("America/Mexico_City"))
+    dia_actual = dias[ahora.weekday()]
+    hora_actual = ahora.hour  # Solo número entero
+
     df = df[df["Dia"].fillna("").str.upper() == dia_actual]
-
     df = df[df["Aula"].str.startswith(modulo)]
-
-    zona = pytz.timezone("America/Mexico_City")
-    hora_actual = datetime.now(zona)
 
     ocupadas = df[
         (df["Hora inicio"] <= hora_actual) &
@@ -55,9 +55,6 @@ def index(modulo="A"):
 
     aulas_fisicas = [f"{modulo}{i}" for i in range(1, 17)]
 
-    # ==========================
-    # TARJETAS ACTUALES
-    # ==========================
     tarjetas = []
 
     for aula in aulas_fisicas:
@@ -81,9 +78,6 @@ def index(modulo="A"):
                 "estado": "libre"
             })
 
-    # ==========================
-    # TARJETAS PROXIMAS
-    # ==========================
     tarjetas_proximas = []
 
     for aula in aulas_fisicas:
@@ -115,6 +109,8 @@ def index(modulo="A"):
         dia_actual=dia_actual,
         modulo=modulo
     )
+
+
 @app.route("/movil")
 def vista_movil():
     return render_template("movil.html")
