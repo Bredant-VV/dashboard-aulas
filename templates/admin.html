@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Panel Administrador</title>
+</head>
+<body style="font-family: Arial; text-align: center; margin-top: 50px;">
+
+    <h1>Panel Administrador</h1>
+
+    <form method="POST">
+        <button type="submit" style="padding: 10px 20px; font-size: 16px;">
+            Actualizar Horarios
+        </button>
+    </form>
+
+    {% if mensaje %}
+        <p style="margin-top: 20px; font-weight: bold;">
+            {{ mensaje }}
+        </p>
+    {% endif %}
+
+</body>
+</html>
