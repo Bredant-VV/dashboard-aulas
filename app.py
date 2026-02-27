@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import os
-from actualizador import actualizar_horarios
+#from actualizador import actualizar_horarios
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave_super_secreta_cambiar")
