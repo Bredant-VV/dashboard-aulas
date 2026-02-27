@@ -41,11 +41,13 @@ def cargar_datos(modulo):
     if df.empty:
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
+    # Normalizar columnas
     df.columns = df.columns.str.strip().str.lower()
 
     if not all(col in df.columns for col in ["aula", "dia", "hora_ini", "hora_fin"]):
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
+    # Limpiar datos
     df["aula"] = df["aula"].astype(str).str.strip().str.upper()
     df["dia"] = df["dia"].astype(str).str.strip().str.upper()
 
@@ -57,6 +59,7 @@ def cargar_datos(modulo):
     df["hora_ini"] = df["hora_ini"].astype(int)
     df["hora_fin"] = df["hora_fin"].astype(int)
 
+    # Filtrar día y módulo
     df = df[df["dia"] == dia_actual]
     df = df[df["aula"].str.startswith(modulo.upper())]
 
@@ -68,18 +71,6 @@ def cargar_datos(modulo):
     proximas = df[
         (df["hora_ini"] > hora_actual)
     ].sort_values(by="hora_ini")
-
-    ocupadas = ocupadas.rename(columns={
-        "aula": "Aula",
-        "hora_ini": "Hora inicio",
-        "hora_fin": "Hora Fin"
-    })
-
-    proximas = proximas.rename(columns={
-        "aula": "Aula",
-        "hora_ini": "Hora inicio",
-        "hora_fin": "Hora Fin"
-    })
 
     return ocupadas, proximas, hora_actual, dia_actual
 
@@ -100,30 +91,42 @@ def index(modulo="A"):
 
     for aula in aulas_fisicas:
 
-        clase_actual = ocupadas[ocupadas["Aula"] == aula] if not ocupadas.empty else pd.DataFrame()
-        siguiente = proximas[proximas["Aula"] == aula] if not proximas.empty else pd.DataFrame()
+        clase_actual = ocupadas[ocupadas["aula"] == aula] if not ocupadas.empty else pd.DataFrame()
+        siguiente = proximas[proximas["aula"] == aula] if not proximas.empty else pd.DataFrame()
 
+        # CLASE ACTUAL
         if not clase_actual.empty:
             fila = clase_actual.iloc[0]
             tarjetas.append({
                 "aula": aula,
                 "estado": "ocupada",
-                "inicio": fila["Hora inicio"],
-                "fin": fila["Hora Fin"]
+                "materia": fila.get("materia", ""),
+                "carrera": fila.get("programa", ""),
+                "inicio": int(fila.get("hora_ini", 0)),
+                "fin": int(fila.get("hora_fin", 0))
             })
         else:
-            tarjetas.append({"aula": aula, "estado": "libre"})
+            tarjetas.append({
+                "aula": aula,
+                "estado": "libre"
+            })
 
+        # PROXIMA CLASE
         if not siguiente.empty:
             fila = siguiente.iloc[0]
             tarjetas_proximas.append({
                 "aula": aula,
                 "estado": "ocupada",
-                "inicio": fila["Hora inicio"],
-                "fin": fila["Hora Fin"]
+                "materia": fila.get("materia", ""),
+                "carrera": fila.get("programa", ""),
+                "inicio": int(fila.get("hora_ini", 0)),
+                "fin": int(fila.get("hora_fin", 0))
             })
         else:
-            tarjetas_proximas.append({"aula": aula, "estado": "libre"})
+            tarjetas_proximas.append({
+                "aula": aula,
+                "estado": "libre"
+            })
 
     return render_template(
         "index.html",
