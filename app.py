@@ -19,7 +19,7 @@ CSV_PATH = "horarios.csv"
 def cargar_datos(modulo):
 
     ahora = datetime.now(ZoneInfo("America/Mexico_City"))
-    hora_actual = 10  # ← ya no fija en 10
+    hora_actual = ahora.hour  # ← ya no fija en 10
 
     dias_map = {
         0: "LUNES",
