@@ -32,49 +32,59 @@ def cargar_datos(modulo):
         6: "DOMINGO"
     }
 
-    dia_actual = dias_map[ahora.weekday()]
+    dia_actual = dias_map.get(ahora.weekday(), "SIN_DIA")
 
+    # Si no existe CSV
     if not os.path.exists(CSV_PATH):
+        print("⚠ CSV no encontrado")
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
-    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+    try:
+        df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
 
-    if df.empty:
+        if df.empty:
+            print("⚠ CSV vacío")
+            return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+        # Normalizar nombres de columnas
+        df.columns = df.columns.str.strip()
+
+        columnas_requeridas = ["Aula", "Dia", "Hora inicio", "Hora Fin"]
+
+        for col in columnas_requeridas:
+            if col not in df.columns:
+                print(f"⚠ Falta columna: {col}")
+                print("Columnas actuales:", df.columns.tolist())
+                return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+        # Convertir horas
+        df["Hora inicio"] = pd.to_numeric(df["Hora inicio"], errors="coerce")
+        df["Hora Fin"] = pd.to_numeric(df["Hora Fin"], errors="coerce")
+        df = df.dropna(subset=["Hora inicio", "Hora Fin"])
+
+        df["Hora inicio"] = df["Hora inicio"].astype(int)
+        df["Hora Fin"] = df["Hora Fin"].astype(int)
+
+        # Filtrar por día
+        df = df[df["Dia"].fillna("").str.upper() == dia_actual]
+
+        # Filtrar por módulo
+        df = df[df["Aula"].fillna("").str.upper().str.startswith(modulo.upper())]
+
+        ocupadas = df[
+            (df["Hora inicio"] <= hora_actual) &
+            (df["Hora Fin"] > hora_actual)
+        ]
+
+        proximas = df[
+            (df["Hora inicio"] > hora_actual)
+        ].sort_values(by="Hora inicio")
+
+        return ocupadas, proximas, hora_actual, dia_actual
+
+    except Exception as e:
+        print("🔥 ERROR en cargar_datos:", e)
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
-
-    # Normalizar nombres
-    df.columns = df.columns.str.strip()
-
-    # Verificar columnas mínimas necesarias
-    columnas_requeridas = ["Aula", "Dia", "Hora inicio", "Hora Fin"]
-
-    if not all(col in df.columns for col in columnas_requeridas):
-        print("⚠ El CSV no tiene el formato esperado.")
-        print("Columnas actuales:", df.columns.tolist())
-        return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
-
-    # Convertir horas
-    df["Hora inicio"] = pd.to_numeric(df["Hora inicio"], errors="coerce")
-    df["Hora Fin"] = pd.to_numeric(df["Hora Fin"], errors="coerce")
-    df = df.dropna(subset=["Hora inicio", "Hora Fin"])
-
-    df["Hora inicio"] = df["Hora inicio"].astype(int)
-    df["Hora Fin"] = df["Hora Fin"].astype(int)
-
-    # Filtrar día y módulo
-    df = df[df["Dia"].str.upper() == dia_actual]
-    df = df[df["Aula"].str.upper().str.startswith(modulo.upper())]
-
-    ocupadas = df[
-        (df["Hora inicio"] <= hora_actual) &
-        (df["Hora Fin"] > hora_actual)
-    ]
-
-    proximas = df[
-        (df["Hora inicio"] > hora_actual)
-    ].sort_values(by="Hora inicio")
-
-    return ocupadas, proximas, hora_actual, dia_actual
 
 
 # =====================================
@@ -96,7 +106,7 @@ def index(modulo="A"):
         clase_actual = ocupadas[ocupadas["Aula"] == aula] if not ocupadas.empty else pd.DataFrame()
         siguiente = proximas[proximas["Aula"] == aula] if not proximas.empty else pd.DataFrame()
 
-        # Clase actual
+        # TARJETA ACTUAL
         if not clase_actual.empty:
             fila = clase_actual.iloc[0]
             tarjetas.append({
@@ -104,13 +114,13 @@ def index(modulo="A"):
                 "estado": "ocupada",
                 "materia": fila.get("Materia", ""),
                 "carrera": fila.get("Carrera", ""),
-                "inicio": fila.get("Hora inicio", ""),
-                "fin": fila.get("Hora Fin", "")
+                "inicio": int(fila.get("Hora inicio", 0)),
+                "fin": int(fila.get("Hora Fin", 0))
             })
         else:
             tarjetas.append({"aula": aula, "estado": "libre"})
 
-        # Próxima clase
+        # TARJETA PROXIMA
         if not siguiente.empty:
             fila = siguiente.iloc[0]
             tarjetas_proximas.append({
@@ -118,8 +128,8 @@ def index(modulo="A"):
                 "estado": "ocupada",
                 "materia": fila.get("Materia", ""),
                 "carrera": fila.get("Carrera", ""),
-                "inicio": fila.get("Hora inicio", ""),
-                "fin": fila.get("Hora Fin", "")
+                "inicio": int(fila.get("Hora inicio", 0)),
+                "fin": int(fila.get("Hora Fin", 0))
             })
         else:
             tarjetas_proximas.append({"aula": aula, "estado": "libre"})
@@ -181,7 +191,7 @@ def vista_movil():
 
 
 # =====================================
-# EJECUCION
+# EJECUCION LOCAL (NO afecta Render)
 # =====================================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
