@@ -34,7 +34,6 @@ def cargar_datos(modulo):
 
     dia_actual = dias_map.get(ahora.weekday(), "SIN_DIA")
 
-    # Si no existe CSV
     if not os.path.exists(CSV_PATH):
         print("⚠ CSV no encontrado")
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
@@ -57,19 +56,31 @@ def cargar_datos(modulo):
                 print("Columnas actuales:", df.columns.tolist())
                 return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
-        # Convertir horas
+        # Limpiar datos importantes
+        df["Aula"] = df["Aula"].astype(str).str.strip().str.upper()
+        df["Dia"] = df["Dia"].astype(str).str.strip().str.upper()
+
         df["Hora inicio"] = pd.to_numeric(df["Hora inicio"], errors="coerce")
         df["Hora Fin"] = pd.to_numeric(df["Hora Fin"], errors="coerce")
+
         df = df.dropna(subset=["Hora inicio", "Hora Fin"])
 
         df["Hora inicio"] = df["Hora inicio"].astype(int)
         df["Hora Fin"] = df["Hora Fin"].astype(int)
 
+        # DEBUG INFO
+        print("===================================")
+        print("HORA ACTUAL:", hora_actual)
+        print("DIA ACTUAL:", dia_actual)
+        print("TOTAL REGISTROS CSV:", len(df))
+        print("REGISTROS DEL DIA:", len(df[df['Dia'] == dia_actual]))
+        print("===================================")
+
         # Filtrar por día
-        df = df[df["Dia"].fillna("").str.upper() == dia_actual]
+        df = df[df["Dia"] == dia_actual]
 
         # Filtrar por módulo
-        df = df[df["Aula"].fillna("").str.upper().str.startswith(modulo.upper())]
+        df = df[df["Aula"].str.startswith(modulo.upper())]
 
         ocupadas = df[
             (df["Hora inicio"] <= hora_actual) &
@@ -79,6 +90,9 @@ def cargar_datos(modulo):
         proximas = df[
             (df["Hora inicio"] > hora_actual)
         ].sort_values(by="Hora inicio")
+
+        print("CLASES OCUPADAS:", len(ocupadas))
+        print("CLASES PROXIMAS:", len(proximas))
 
         return ocupadas, proximas, hora_actual, dia_actual
 
