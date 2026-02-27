@@ -19,37 +19,10 @@ CSV_PATH = "horarios.csv"
 # =====================================
 def cargar_datos(modulo):
 
-    if not os.path.exists(CSV_PATH):
-        print("No existe el CSV")
-        return pd.DataFrame(), pd.DataFrame(), None, None
+    ahora = datetime.now(ZoneInfo("America/Mexico_City"))
+    hora_actual = ahora.hour
 
-    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
-
-    if df.empty:
-        print("CSV vacío")
-        return pd.DataFrame(), pd.DataFrame(), None, None
-
-    # 🔥 Imprimir columnas reales en logs (clave para debug)
-    print("Columnas detectadas:", df.columns.tolist())
-
-    df.columns = df.columns.str.strip()
-
-    # Verificamos que existan las columnas necesarias EXACTAS
-    columnas_necesarias = ["Hora inicio", "Hora Fin", "Dia", "Aula"]
-
-    for col in columnas_necesarias:
-        if col not in df.columns:
-            print(f"Falta columna: {col}")
-            return pd.DataFrame(), pd.DataFrame(), None, None
-
-    df["Hora inicio"] = pd.to_numeric(df["Hora inicio"], errors="coerce")
-    df["Hora Fin"] = pd.to_numeric(df["Hora Fin"], errors="coerce")
-    df = df.dropna(subset=["Hora inicio", "Hora Fin"])
-
-    df["Hora inicio"] = df["Hora inicio"].astype(int)
-    df["Hora Fin"] = df["Hora Fin"].astype(int)
-
-    dias = {
+    dias_map = {
         0: "LUNES",
         1: "MARTES",
         2: "MIERCOLES",
@@ -59,12 +32,38 @@ def cargar_datos(modulo):
         6: "DOMINGO"
     }
 
-    ahora = datetime.now(ZoneInfo("America/Mexico_City"))
-    dia_actual = dias[ahora.weekday()]
-    hora_actual = ahora.hour
+    dia_actual = dias_map[ahora.weekday()]
 
-    df = df[df["Dia"].fillna("").str.upper() == dia_actual]
-    df = df[df["Aula"].str.startswith(modulo)]
+    if not os.path.exists(CSV_PATH):
+        return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+
+    if df.empty:
+        return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+    # Normalizar nombres
+    df.columns = df.columns.str.strip()
+
+    # Verificar columnas mínimas necesarias
+    columnas_requeridas = ["Aula", "Dia", "Hora inicio", "Hora Fin"]
+
+    if not all(col in df.columns for col in columnas_requeridas):
+        print("⚠ El CSV no tiene el formato esperado.")
+        print("Columnas actuales:", df.columns.tolist())
+        return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+    # Convertir horas
+    df["Hora inicio"] = pd.to_numeric(df["Hora inicio"], errors="coerce")
+    df["Hora Fin"] = pd.to_numeric(df["Hora Fin"], errors="coerce")
+    df = df.dropna(subset=["Hora inicio", "Hora Fin"])
+
+    df["Hora inicio"] = df["Hora inicio"].astype(int)
+    df["Hora Fin"] = df["Hora Fin"].astype(int)
+
+    # Filtrar día y módulo
+    df = df[df["Dia"].str.upper() == dia_actual]
+    df = df[df["Aula"].str.upper().str.startswith(modulo.upper())]
 
     ocupadas = df[
         (df["Hora inicio"] <= hora_actual) &
@@ -97,6 +96,7 @@ def index(modulo="A"):
         clase_actual = ocupadas[ocupadas["Aula"] == aula] if not ocupadas.empty else pd.DataFrame()
         siguiente = proximas[proximas["Aula"] == aula] if not proximas.empty else pd.DataFrame()
 
+        # Clase actual
         if not clase_actual.empty:
             fila = clase_actual.iloc[0]
             tarjetas.append({
@@ -110,6 +110,7 @@ def index(modulo="A"):
         else:
             tarjetas.append({"aula": aula, "estado": "libre"})
 
+        # Próxima clase
         if not siguiente.empty:
             fila = siguiente.iloc[0]
             tarjetas_proximas.append({
@@ -151,9 +152,6 @@ def login():
     return render_template("login.html", error=error)
 
 
-# =====================================
-# LOGOUT
-# =====================================
 @app.route("/logout")
 def logout():
     session.clear()
