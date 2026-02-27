@@ -35,69 +35,81 @@ def cargar_datos(modulo):
     dia_actual = dias_map.get(ahora.weekday(), "SIN_DIA")
 
     if not os.path.exists(CSV_PATH):
-        print("⚠ CSV no encontrado")
+        print("CSV no encontrado")
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
     try:
         df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
 
         if df.empty:
-            print("⚠ CSV vacío")
+            print("CSV vacío")
             return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
-        # Normalizar nombres de columnas
-        df.columns = df.columns.str.strip()
+        # 🔥 NORMALIZAR NOMBRES A MINUSCULAS
+        df.columns = df.columns.str.strip().str.lower()
 
-        columnas_requeridas = ["Aula", "Dia", "Hora inicio", "Hora Fin"]
+        # Usar nombres reales del CSV
+        if not all(col in df.columns for col in ["aula", "dia", "hora_ini", "hora_fin"]):
+            print("Columnas disponibles:", df.columns.tolist())
+            return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
-        for col in columnas_requeridas:
-            if col not in df.columns:
-                print(f"⚠ Falta columna: {col}")
-                print("Columnas actuales:", df.columns.tolist())
-                return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+        # Limpiar datos
+        df["aula"] = df["aula"].astype(str).str.strip().str.upper()
+        df["dia"] = df["dia"].astype(str).str.strip().str.upper()
 
-        # Limpiar datos importantes
-        df["Aula"] = df["Aula"].astype(str).str.strip().str.upper()
-        df["Dia"] = df["Dia"].astype(str).str.strip().str.upper()
+        df["hora_ini"] = pd.to_numeric(df["hora_ini"], errors="coerce")
+        df["hora_fin"] = pd.to_numeric(df["hora_fin"], errors="coerce")
 
-        df["Hora inicio"] = pd.to_numeric(df["Hora inicio"], errors="coerce")
-        df["Hora Fin"] = pd.to_numeric(df["Hora Fin"], errors="coerce")
+        df = df.dropna(subset=["hora_ini", "hora_fin"])
 
-        df = df.dropna(subset=["Hora inicio", "Hora Fin"])
+        df["hora_ini"] = df["hora_ini"].astype(int)
+        df["hora_fin"] = df["hora_fin"].astype(int)
 
-        df["Hora inicio"] = df["Hora inicio"].astype(int)
-        df["Hora Fin"] = df["Hora Fin"].astype(int)
-
-        # DEBUG INFO
+        # DEBUG
         print("===================================")
         print("HORA ACTUAL:", hora_actual)
         print("DIA ACTUAL:", dia_actual)
-        print("TOTAL REGISTROS CSV:", len(df))
-        print("REGISTROS DEL DIA:", len(df[df['Dia'] == dia_actual]))
+        print("TOTAL REGISTROS:", len(df))
+        print("REGISTROS DEL DIA:", len(df[df["dia"] == dia_actual]))
         print("===================================")
 
         # Filtrar por día
-        df = df[df["Dia"] == dia_actual]
+        df = df[df["dia"] == dia_actual]
 
         # Filtrar por módulo
-        df = df[df["Aula"].str.startswith(modulo.upper())]
+        df = df[df["aula"].str.startswith(modulo.upper())]
 
         ocupadas = df[
-            (df["Hora inicio"] <= hora_actual) &
-            (df["Hora Fin"] > hora_actual)
+            (df["hora_ini"] <= hora_actual) &
+            (df["hora_fin"] > hora_actual)
         ]
 
         proximas = df[
-            (df["Hora inicio"] > hora_actual)
-        ].sort_values(by="Hora inicio")
+            (df["hora_ini"] > hora_actual)
+        ].sort_values(by="hora_ini")
 
         print("CLASES OCUPADAS:", len(ocupadas))
         print("CLASES PROXIMAS:", len(proximas))
 
+        # 🔥 Renombrar para que el resto del sistema no cambie
+        ocupadas = ocupadas.rename(columns={
+            "aula": "Aula",
+            "dia": "Dia",
+            "hora_ini": "Hora inicio",
+            "hora_fin": "Hora Fin"
+        })
+
+        proximas = proximas.rename(columns={
+            "aula": "Aula",
+            "dia": "Dia",
+            "hora_ini": "Hora inicio",
+            "hora_fin": "Hora Fin"
+        })
+
         return ocupadas, proximas, hora_actual, dia_actual
 
     except Exception as e:
-        print("🔥 ERROR en cargar_datos:", e)
+        print("ERROR:", e)
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
 
