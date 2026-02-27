@@ -19,7 +19,7 @@ CSV_PATH = "horarios.csv"
 def cargar_datos(modulo):
 
     ahora = datetime.now(ZoneInfo("America/Mexico_City"))
-    hora_actual = ahora.hour  # ← ya no fija en 10
+    hora_actual = ahora.hour
 
     dias_map = {
         0: "LUNES",
@@ -36,64 +36,56 @@ def cargar_datos(modulo):
     if not os.path.exists(CSV_PATH):
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
 
-    try:
-        df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
+    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
 
-        if df.empty:
-            return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
-
-        # Normalizar nombres
-        df.columns = df.columns.str.strip().str.lower()
-
-        if not all(col in df.columns for col in ["aula", "dia", "hora_ini", "hora_fin"]):
-            return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
-
-        df["aula"] = df["aula"].astype(str).str.strip().str.upper()
-        df["dia"] = df["dia"].astype(str).str.strip().str.upper()
-
-        df["hora_ini"] = pd.to_numeric(df["hora_ini"], errors="coerce")
-        df["hora_fin"] = pd.to_numeric(df["hora_fin"], errors="coerce")
-
-        df = df.dropna(subset=["hora_ini", "hora_fin"])
-
-        df["hora_ini"] = df["hora_ini"].astype(int)
-        df["hora_fin"] = df["hora_fin"].astype(int)
-
-        df = df[df["dia"] == dia_actual]
-        df = df[df["aula"].str.startswith(modulo.upper())]
-
-        ocupadas = df[
-            (df["hora_ini"] <= hora_actual) &
-            (df["hora_fin"] > hora_actual)
-        ]
-
-        proximas = df[
-            (df["hora_ini"] > hora_actual)
-        ].sort_values(by="hora_ini")
-
-        # Renombrar columnas para el template
-        ocupadas = ocupadas.rename(columns={
-            "aula": "Aula",
-            "dia": "Dia",
-            "hora_ini": "Hora inicio",
-            "hora_fin": "Hora Fin"
-        })
-
-        proximas = proximas.rename(columns={
-            "aula": "Aula",
-            "dia": "Dia",
-            "hora_ini": "Hora inicio",
-            "hora_fin": "Hora Fin"
-        })
-
-        return ocupadas, proximas, hora_actual, dia_actual
-
-    except Exception:
+    if df.empty:
         return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+    df.columns = df.columns.str.strip().str.lower()
+
+    if not all(col in df.columns for col in ["aula", "dia", "hora_ini", "hora_fin"]):
+        return pd.DataFrame(), pd.DataFrame(), hora_actual, dia_actual
+
+    df["aula"] = df["aula"].astype(str).str.strip().str.upper()
+    df["dia"] = df["dia"].astype(str).str.strip().str.upper()
+
+    df["hora_ini"] = pd.to_numeric(df["hora_ini"], errors="coerce")
+    df["hora_fin"] = pd.to_numeric(df["hora_fin"], errors="coerce")
+
+    df = df.dropna(subset=["hora_ini", "hora_fin"])
+
+    df["hora_ini"] = df["hora_ini"].astype(int)
+    df["hora_fin"] = df["hora_fin"].astype(int)
+
+    df = df[df["dia"] == dia_actual]
+    df = df[df["aula"].str.startswith(modulo.upper())]
+
+    ocupadas = df[
+        (df["hora_ini"] <= hora_actual) &
+        (df["hora_fin"] > hora_actual)
+    ]
+
+    proximas = df[
+        (df["hora_ini"] > hora_actual)
+    ].sort_values(by="hora_ini")
+
+    ocupadas = ocupadas.rename(columns={
+        "aula": "Aula",
+        "hora_ini": "Hora inicio",
+        "hora_fin": "Hora Fin"
+    })
+
+    proximas = proximas.rename(columns={
+        "aula": "Aula",
+        "hora_ini": "Hora inicio",
+        "hora_fin": "Hora Fin"
+    })
+
+    return ocupadas, proximas, hora_actual, dia_actual
 
 
 # =====================================
-# RUTA PRINCIPAL
+# DASHBOARD PRINCIPAL
 # =====================================
 @app.route("/")
 @app.route("/modulo/<modulo>")
@@ -116,10 +108,8 @@ def index(modulo="A"):
             tarjetas.append({
                 "aula": aula,
                 "estado": "ocupada",
-                "materia": fila.get("materia", ""),
-                "carrera": fila.get("programa", ""),
-                "inicio": int(fila.get("Hora inicio", 0)),
-                "fin": int(fila.get("Hora Fin", 0))
+                "inicio": fila["Hora inicio"],
+                "fin": fila["Hora Fin"]
             })
         else:
             tarjetas.append({"aula": aula, "estado": "libre"})
@@ -129,10 +119,8 @@ def index(modulo="A"):
             tarjetas_proximas.append({
                 "aula": aula,
                 "estado": "ocupada",
-                "materia": fila.get("materia", ""),
-                "carrera": fila.get("programa", ""),
-                "inicio": int(fila.get("Hora inicio", 0)),
-                "fin": int(fila.get("Hora Fin", 0))
+                "inicio": fila["Hora inicio"],
+                "fin": fila["Hora Fin"]
             })
         else:
             tarjetas_proximas.append({"aula": aula, "estado": "libre"})
@@ -145,6 +133,50 @@ def index(modulo="A"):
         dia_actual=dia_actual,
         modulo=modulo
     )
+
+
+# =====================================
+# VISTA MOVIL
+# =====================================
+@app.route("/movil")
+def vista_movil():
+    return render_template("movil.html")
+
+
+# =====================================
+# LOGIN
+# =====================================
+@app.route("/login", methods=["GET", "POST"])
+def login():
+
+    error = None
+
+    if request.method == "POST":
+        if request.form.get("username") == USERNAME and request.form.get("password") == PASSWORD:
+            session["logged_in"] = True
+            return redirect(url_for("admin"))
+        else:
+            error = "Credenciales incorrectas"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+# =====================================
+# PANEL ADMIN
+# =====================================
+@app.route("/admin")
+def admin():
+
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
+    return render_template("admin.html")
 
 
 # =====================================
